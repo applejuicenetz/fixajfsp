@@ -245,8 +245,9 @@ func main() {
 		SmallIcon   uintptr
 	}
 	className := u16("fixajfspWindow")
-	icon := call(user32.NewProc("LoadImageW"), instance, 1, 1, 32, 32, 0)
-	small := call(user32.NewProc("LoadImageW"), instance, 1, 1, 16, 16, 0)
+	// rsrc assigns ID 1 to the manifest and ID 2 to the icon group.
+	icon := call(user32.NewProc("LoadImageW"), instance, 2, 1, 32, 32, 0)
+	small := call(user32.NewProc("LoadImageW"), instance, 2, 1, 16, 16, 0)
 	cursor := call(user32.NewProc("LoadCursorW"), 0, 32512)
 	wc := windowClass{Proc: proc, Instance: instance, Icon: icon, SmallIcon: small, Cursor: cursor, Background: 6, Name: className}
 	wc.Size = uint32(unsafe.Sizeof(wc))

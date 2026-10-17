@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./internal/...
+      - run: |
+          for arch in amd64 arm64; do
+            go run github.com/akavel/rsrc@v0.10.2 -arch $arch -ico cmd/fixajfsp/fixajfsp.ico \
+              -manifest cmd/fixajfsp/fixajfsp.manifest -o cmd/fixajfsp/resource_windows_$arch.syso
+            GOOS=windows GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H windowsgui" \
+              -o dist/fixajfsp-windows-$arch.exe ./cmd/fixajfsp
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fixajfsp
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: fixajfsp
+          path: dist
+      - uses: softprops/action-gh-release@v3
+        with:
+          body: Registriert eine appleJuice GUI für ajfsp-Links und .ajl-Dateien, z.B. für die Portable-Version.
+          fail_on_unmatched_files: true
+          files: dist/*.exe
